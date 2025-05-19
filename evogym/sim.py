@@ -130,23 +130,14 @@ class EvoSim(Sim):
         """
         self._check_valid_robot_name(robot_name)
         indices = self._robot_name_to_actuator_indices[robot_name].copy()   #获得驱动器体素在体素矩阵中对应的下角标#
-        #print("indices:",indices)
-        mask = np.zeros_like(action, dtype=bool)   
-        #print("actionlen:",len(action))
-        mask[indices] = True
-        masked_action = action[mask]    #对于输入的长度为25的动作向量，只保留驱动器体素对应位置上的动作信号#
-        informative_action = np.stack((indices, masked_action), axis=1)
-         # Check if action length matches actuator count, and adjust if necessary
-        #if len(indices) != len(action):
-            #if len(action) < len(indices):
-            # If action is too short, pad with zeros
-                #padded_action = np.zeros(len(indices))
-                #padded_action[:len(action)] = action
-                #action = padded_action
-            #else:
-            # If action is too long, truncate to match number of actuators
-                #action = action[:len(indices)]
-        #informative_action = np.stack((indices, action.flatten()), axis=1)
+        # #print("indices:",indices)
+        # mask = np.zeros_like(action, dtype=bool)   
+        # #print("actionlen:",len(action))
+        # mask[indices] = True
+        # masked_action = action[mask]    #对于输入的长度为25的动作向量，只保留驱动器体素对应位置上的动作信号#
+        # informative_action = np.stack((indices, masked_action), axis=1)
+     
+        informative_action = np.stack((indices, action.flatten()), axis=1)
         
         super().set_action(robot_name, informative_action)
 

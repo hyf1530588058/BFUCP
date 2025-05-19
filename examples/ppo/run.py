@@ -17,6 +17,9 @@ from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 
 import evogym.envs
+from tqdm import tqdm
+
+import IPython
 
 # Derived from
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
@@ -25,8 +28,11 @@ def run_ppo(
     structure, 
     termination_condition, 
     saving_convention, 
+    init_pt_path = None, 
+    idd = 0,
     override_env_name = None,
-    verbose = True):
+    verbose = True,
+    ):
 
     assert (structure == None) == (termination_condition == None) and (structure == None) == (saving_convention == None)
 
@@ -51,16 +57,29 @@ def run_ppo(
     utils.cleanup_log_dir(eval_log_dir)
 
     torch.set_num_threads(1)
-    device = torch.device("cuda:0" if args.cuda else "cpu")
+    device = torch.device("cuda:{}".format(idd % 4) if args.cuda else "cpu")
 
     envs = make_vec_envs(args.env_name, structure, args.seed, args.num_processes,
                          args.gamma, args.log_dir, device, False)
 
-    actor_critic = Policy(
-        envs.observation_space.shape,
-        envs.action_space,
-        base_kwargs={'recurrent': args.recurrent_policy})
-    actor_critic.to(device)
+    if init_pt_path:
+        actor_critic, _ = torch.load(init_pt_path)
+        # actor_critic.action_space = envs.action_space
+        actor_critic.body = structure[0]
+        actor_critic.get_mask()
+        actor_critic.to(device)
+        print('load pt from :', init_pt_path)
+    else:
+        actor_critic = Policy(
+            structure[0],
+            # envs.observation_space.shape,
+            # envs.action_space,
+            env_name = args.env_name,
+            # base_kwargs={}
+            )
+        actor_critic.to(device)
+
+    # IPython.embed()
 
     if args.algo == 'a2c':
         print('Warning: this code has only been tested with ppo.')
@@ -126,6 +145,7 @@ def run_ppo(
     max_determ_avg_reward = float('-inf')
 
     for j in range(num_updates):
+        print(j, '/', num_updates)
 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
@@ -133,7 +153,9 @@ def run_ppo(
                 agent.optimizer, j, num_updates,
                 agent.optimizer.lr if args.algo == "acktr" else args.lr)
 
+        # print('act')
         for step in range(args.num_steps):
+            # print('act', step, '/', args.num_steps)
             # Sample actions
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
@@ -161,6 +183,9 @@ def run_ppo(
                  for info in infos])
             rollouts.insert(obs, recurrent_hidden_states, action,
                             action_log_prob, value, reward, masks, bad_masks)
+            
+            # print('break')
+            # break
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
@@ -186,6 +211,7 @@ def run_ppo(
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
 
+        # print('dbg 01')
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()

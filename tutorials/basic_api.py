@@ -31,7 +31,7 @@ viewer.track_objects('robot', 'box')
 
 # we put it all together in this loop in which we sample a random action for our simulation, step the simulation, and render it
 
-for i in range(500):
+for i in range(5000):
 
     sim.set_action(
         'robot', 

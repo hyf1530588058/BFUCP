@@ -66,9 +66,13 @@ class PackageBase(BenchmarkBase):
         package_vel_final = self.object_vel_at_time(self.get_time(), "package")
 
         obs = self.get_obs(robot_pos_final, robot_vel_final, package_pos_final, package_vel_final)
+        #obs = np.concatenate((
+        #    obs,
+        #    self.get_relative_pos_obs("robot"),
+        #))
         obs = np.concatenate((
             obs,
-            self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
 
         return obs
@@ -87,7 +91,8 @@ class CarrySmallRect(PackageBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        #num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
 
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
         self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(6 + num_robot_points,), dtype=np.float)
@@ -132,7 +137,7 @@ class CarrySmallRect(PackageBase):
         obs = super().get_obs(robot_pos_final, robot_vel_final, package_pos_final, package_vel_final)
         obs = np.concatenate((
             obs,
-            self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
        
         # compute reward
@@ -165,8 +170,8 @@ class CarrySmallRectToTable(PackageBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
-
+        # num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
         self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(6 + num_robot_points,), dtype=np.float)
 
@@ -214,7 +219,8 @@ class CarrySmallRectToTable(PackageBase):
         obs = super().get_obs(robot_pos_final, robot_vel_final, package_pos_final, package_vel_final)
         obs = np.concatenate((
             obs,
-            self.get_relative_pos_obs("robot"),
+            # self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
        
         # compute reward
@@ -241,7 +247,8 @@ class PushSmallRect(PackageBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        #num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
 
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
         self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(6 + num_robot_points,), dtype=np.float)
@@ -266,11 +273,15 @@ class PushSmallRect(PackageBase):
 
         # observation
         obs = super().get_obs(robot_pos_final, robot_vel_final, package_pos_final, package_vel_final)
+        #obs = np.concatenate((
+        #    obs,
+        #    self.get_relative_pos_obs("robot"),
+        #))
+
         obs = np.concatenate((
             obs,
-            self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
-
         # compute reward
         reward = super().get_reward(package_pos_init, package_pos_final, robot_pos_init, robot_pos_final)
         
@@ -287,6 +298,23 @@ class PushSmallRect(PackageBase):
 
         # observation, reward, has simulation met termination conditions, debugging info
         return obs, reward, done, {}
+
+    def reset(self):
+        super().reset()
+
+        robot_pos_final = self.object_pos_at_time(self.get_time(), "robot")
+        robot_vel_final = self.object_vel_at_time(self.get_time(), "robot")
+        package_pos_final = self.object_pos_at_time(self.get_time(), "package")
+        package_vel_final = self.object_vel_at_time(self.get_time(), "package")
+
+        # observation
+        obs = super().get_obs(robot_pos_final, robot_vel_final, package_pos_final, package_vel_final)
+
+        obs = np.concatenate((
+            obs,
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
+        ))
+        return obs
 
 class PushSmallRectOnOppositeSide(PackageBase):
 
@@ -458,8 +486,8 @@ class CatchSmallRect(PackageBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
-
+        # num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
         self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(7 + num_robot_points,), dtype=np.float)
 
@@ -514,7 +542,8 @@ class CatchSmallRect(PackageBase):
             self.get_vel_com_obs("robot"),
             self.get_vel_com_obs("package"),
             self.get_ort_obs("package"),
-            self.get_relative_pos_obs("robot"),
+            #self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
        
         # compute reward
@@ -555,7 +584,8 @@ class CatchSmallRect(PackageBase):
             self.get_vel_com_obs("robot"),
             self.get_vel_com_obs("package"),
             self.get_ort_obs("package"),
-            self.get_relative_pos_obs("robot"),
+            #self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
         ))
 
         return obs

@@ -14,6 +14,12 @@ from gym.envs.registration import register
 
 ## SIMPLE ##
 register(
+    id = 'WalkerAdv-v0',
+    entry_point = 'evogym.envs.walk:WalkingFlatAdv',
+    max_episode_steps=500
+)
+
+register(
     id = 'Walker-v0',
     entry_point = 'evogym.envs.walk:WalkingFlat',
     max_episode_steps=500

@@ -184,21 +184,22 @@ bool Environment::step() {
 	// cout << "\n\n\n\n";
 
 	// print_poses();
-	physics_handler.resolve_collisions();
-	physics_handler.update_actuators();
+	//physics_handler.apply_external_force(); //在一次步进中施加外部力
+	physics_handler.resolve_collisions();   //调用物理处理器的碰撞解决方法，处理当前状态下的所有碰撞。
+	physics_handler.update_actuators();    //更新与物理系统交互的执行器状态。
 	// print_poses();
-	physics_handler.step_rk4(0.0001);
+	physics_handler.step_rk4(0.0001);   //使用四阶龙格-库塔法（RK4）进行物理状态的时间积分，时间步长为 0.0001。
 	// print_poses();
 	
 	//physics_handler.step_rk4(0.00000005);
 	//physics_handler.step_rk4(0.00001);
-	physics_handler.resolve_edge_constraints();
-	physics_handler.update_true_vel(0.0001);
+	physics_handler.resolve_edge_constraints(); //解决边缘约束，确保物理对象之间的约束关系得到满足。
+	physics_handler.update_true_vel(0.0001); //更新物理对象的真实速度，以反映当前状态。
 
 
 
 
-	return physics_handler.is_any_robot_self_colliding();
+	return physics_handler.is_any_robot_self_colliding();  //返回是否有机器人自我碰撞的状态。
 
 	//physics_handler.step_euler(0.0000005);
 
@@ -298,6 +299,115 @@ Ref <MatrixXd> Environment::object_pos_at_time(long int sim_time, string object_
 	int min_index = objects[object_index]->min_point_index;
 	int max_index = objects[object_index]->max_point_index;
 	return history[sim_time].points_pos(Eigen::all, Eigen::seq(min_index, max_index));
+
+}
+Ref <MatrixXd> Environment::object_pos_at_time_matrix_for_robot(long int sim_time, string object_name) {
+
+	if (history.count(sim_time) <= 0 || object_name_to_index.count(object_name) <= 0) {
+		Matrix <double, 2, Dynamic> empty;
+		empty.resize(2, 4);
+		empty << 0, 0, 0, 0, 0, 0, 0, 0;
+		return empty;
+	}
+
+	int object_index = object_name_to_index[object_name];
+	int min_index = objects[object_index]->min_point_index;
+	int max_index = objects[object_index]->max_point_index;
+	auto matrix_2_mul_points = history[sim_time].points_pos(Eigen::all, Eigen::seq(min_index, max_index));
+
+	// cout << matrix_2_mul_points << endl;
+	// cout << matrix_2_mul_points.size() << endl;
+	// cout << "id_2_xy size:" << idx_2_xy.size() << endl;
+	// for(auto xy : idx_2_xy){
+	// 	cout << xy.first << ' ' << xy.second << endl;
+	// }
+	// cout << endl;
+
+
+	// Matrix <double, 2, Dynamic> ret;
+	// ret.resize(2, world_grid_height * world_grid_width);
+
+	// cout << "robot_grid_height = " << robot_grid_height << endl;
+	// cout << "robot_grid_width = " << robot_grid_width << endl;
+
+	// MatrixXd ret(2, robot_grid_height * robot_grid_width);
+	MatrixXd ret = MatrixXd::Zero(2, robot_grid_height * robot_grid_width);
+
+	// cout << "ret size:" << ret.size() << endl;
+	// cout << ret << endl;
+
+	// Matrix <double, world_grid_width, world_grid_height, 2> ret;
+
+	// Matrix3d ret(world_grid_width, world_grid_height, 2);
+	// cout << matrix_2_mul_points(Eigen::all, 0) << endl;
+	// cout << ret(0, 0, Eigen::all) << endl;
+
+	for(int idx = 0; idx < idx_2_xy.size(); idx++){
+		auto [x, y] = idx_2_xy[idx];
+		ret.col(y * robot_grid_width + x) = matrix_2_mul_points(Eigen::all, idx);
+	}
+	// cout << "ret size:" << ret.size() << endl;
+	// cout << ret << endl;
+
+	return ret;
+
+}
+Ref <MatrixXd> Environment::object_pos_at_time_matrix_for_robot_2(long int sim_time, string object_name) {
+
+	if (history.count(sim_time) <= 0 || object_name_to_index.count(object_name) <= 0) {
+		Matrix <double, 2, Dynamic> empty;
+		empty.resize(2, 4);
+		empty << 0, 0, 0, 0, 0, 0, 0, 0;
+		return empty;
+	}
+
+	int object_index = object_name_to_index[object_name];
+	int min_index = objects[object_index]->min_point_index;
+	int max_index = objects[object_index]->max_point_index;
+	auto matrix_2_mul_points = history[sim_time].points_pos(Eigen::all, Eigen::seq(min_index, max_index));
+
+	// cout << "min_index = " << min_index << endl;
+	// cout << "max_index = " << max_index << endl;
+	// cout << "max_index - min_index = " << max_index - min_index << endl;
+	// cout << "matrix_2_mul_points.size() = " << matrix_2_mul_points.size() << endl;
+	// cout << "matrix_2_mul_points = " << matrix_2_mul_points << endl;
+	// return matrix_2_mul_points;
+
+	// MatrixXd ret(2, 4 * robot_grid_height_block * robot_grid_width_block);
+	// MatrixXd ret = MatrixXd::Zero(2, 4 * robot_grid_height_block * robot_grid_width_block);
+
+	// Matrix <double, 2, Dynamic> ret;
+
+	// ret放到局部会导致矩阵第一个元素未定义，我也不知道为什么，这个bug我也是醉了，调了好久
+	// 第一个元素未定义会导致有时变成inf！！
+	// 有没有人对这个bug负下责啊
+
+	// ret.resize(2, 4 * robot_grid_height_block * robot_grid_width_block);
+	// for(int i = 0; i < 4 * robot_grid_height_block * robot_grid_width_block; i ++){
+	// 	ret.col(i) = MatrixXd::Zero(2, 1);
+	// }
+	ret = MatrixXd::Zero(2, 4 * robot_grid_height_block * robot_grid_width_block);
+
+	// cout << 4 * robot_grid_height_block * robot_grid_width_block << endl;
+	for(auto iter : idx_2_xy_block){
+		auto [x, y] = iter.first;
+		auto idxs = iter.second;
+		auto area = robot_grid_height_block * robot_grid_width_block;
+		for(int i = 0; i < 4; i++){
+			// cout << idxs[i] << ' ' << i * area + y * robot_grid_width_block + x << endl;
+
+			ret.col(i * area + y * robot_grid_width_block + x) = matrix_2_mul_points(Eigen::all, idxs[i]);
+			// 做了一堆无用的改动，发现问题不在这
+			// ret(0, i * area + y * robot_grid_width_block + x) = matrix_2_mul_points(0, idxs[i]);
+			// ret(1, i * area + y * robot_grid_width_block + x) = matrix_2_mul_points(1, idxs[i]);
+		}
+	}
+
+	// cout << "ret = " << ret <<endl;
+
+	// cout << "over" << endl;
+	// return ret(Eigen::all, Eigen::seq(0, 4 * robot_grid_height_block * robot_grid_width_block - 1));
+	return ret;
 
 }
 Ref <MatrixXd> Environment::object_vel_at_time(long int sim_time, string object_name) {

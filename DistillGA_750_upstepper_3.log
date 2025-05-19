@@ -1,0 +1,2 @@
+zsh: command not found: python
+python: can't open file '/home/hyf/evogym-fix/run_universal_1.py': [Errno 2] No such file or directory

@@ -129,13 +129,24 @@ class EvoSim(Sim):
             action (np.ndarray): `(n,)` array of actions, where `n` is the number of actuators of the target robot.
         """
         self._check_valid_robot_name(robot_name)
-        indices = self._robot_name_to_actuator_indices[robot_name].copy()
-
-        if indices.shape != action.flatten().shape:
-            raise ValueError(
-                f'expected action with {len(indices)} values but got action with {len(action.flatten())} values for {robot_name}'
-            )
-        informative_action = np.stack((indices, action.flatten()), axis=1)
+        indices = self._robot_name_to_actuator_indices[robot_name].copy()   #获得驱动器体素在体素矩阵中对应的下角标#
+        #print("indices:",indices)
+        mask = np.zeros_like(action, dtype=bool)   
+        #print("actionlen:",len(action))
+        mask[indices] = True
+        masked_action = action[mask]    #对于输入的长度为25的动作向量，只保留驱动器体素对应位置上的动作信号#
+        informative_action = np.stack((indices, masked_action), axis=1)
+         # Check if action length matches actuator count, and adjust if necessary
+        #if len(indices) != len(action):
+            #if len(action) < len(indices):
+            # If action is too short, pad with zeros
+                #padded_action = np.zeros(len(indices))
+                #padded_action[:len(action)] = action
+                #action = padded_action
+            #else:
+            # If action is too long, truncate to match number of actuators
+                #action = action[:len(indices)]
+        #informative_action = np.stack((indices, action.flatten()), axis=1)
         
         super().set_action(robot_name, informative_action)
 
@@ -211,6 +222,36 @@ class EvoSim(Sim):
         self._check_valid_time(time)
         self._check_valid_object_name(object_name)
         return super().object_pos_at_time(time, object_name)/self.VOXEL_SIZE
+        
+    def object_pos_at_time_matrix_for_robot(self, time: int, object_name: str) -> np.ndarray:
+        """
+        从上面那个函数复用过来的，用来解决返回完整地位置矩阵
+
+        Args:
+            time (int): time at which to return measurements.
+            object_name (str): name of object
+        
+        Returns:
+            np.ndarray: `(2, n)` array of measurements, where `n` is the number of point-masses in the target object.
+        """
+        self._check_valid_time(time)
+        self._check_valid_object_name(object_name)
+        return super().object_pos_at_time_matrix_for_robot(time, object_name)/self.VOXEL_SIZE
+        
+    def object_pos_at_time_matrix_for_robot_2(self, time: int, object_name: str) -> np.ndarray:
+        """
+        从上面那个函数复用过来的，用来解决返回完整地位置矩阵
+
+        Args:
+            time (int): time at which to return measurements.
+            object_name (str): name of object
+        
+        Returns:
+            np.ndarray: `(2, n)` array of measurements, where `n` is the number of point-masses in the target object.
+        """
+        self._check_valid_time(time)
+        self._check_valid_object_name(object_name)
+        return super().object_pos_at_time_matrix_for_robot_2(time, object_name)/self.VOXEL_SIZE
 
     def object_vel_at_time(self, time: int, object_name: str) -> np.ndarray:
         """

@@ -13,6 +13,8 @@ import pkg_resources
 import numpy as np
 import os
 
+import IPython
+
 class EvoGymBase(gym.Env):
     """
     Base class for all Evolution Gym environments.
@@ -238,6 +240,43 @@ class EvoGymBase(gym.Env):
         object_pos_com = np.mean(object_points_pos, axis=1)
         return (object_points_pos-np.array([object_pos_com]).T).flatten()
 
+    def get_relative_pos_obs_matrix_for_robot(self, object_name: str):
+        """
+        从上面那个函数复用过来的，用来解决返回完整地位置矩阵
+
+        Args:
+            object_name (str): name of object
+        
+        Returns:
+            np.ndarray: `(2n,)` array of positions, where `n` is the number of point masses.
+        """
+        # todo
+        object_points_pos_matrix_for_robot = self._sim.object_pos_at_time_matrix_for_robot(self.get_time(), object_name)
+        # IPython.embed()
+        object_points_pos = self._sim.object_pos_at_time(self.get_time(), object_name)
+        object_pos_com = np.mean(object_points_pos, axis=1)
+        return (object_points_pos_matrix_for_robot-np.array([object_pos_com]).T).flatten()
+
+    def get_relative_pos_obs_matrix_for_robot_2(self, object_name: str):
+        """
+        从上面那个函数复用过来的，用来解决返回完整地位置矩阵
+
+        Args:
+            object_name (str): name of object
+        
+        Returns:
+            np.ndarray: `(2n,)` array of positions, where `n` is the number of point masses.
+        """
+        # todo
+        object_points_pos_matrix_for_robot_2 = self._sim.object_pos_at_time_matrix_for_robot_2(self.get_time(), object_name)
+        # IPython.embed()
+
+        # return object_points_pos_matrix_for_robot_2.flatten()
+        
+        object_points_pos = self._sim.object_pos_at_time(self.get_time(), object_name)
+        object_pos_com = np.mean(object_points_pos, axis=1)
+        return (object_points_pos_matrix_for_robot_2-np.array([object_pos_com]).T).flatten()
+
     def get_ort_obs(self, object_name: str):
         """
         Observation helper-function. Returns the orientation of a target object.
@@ -361,7 +400,7 @@ class BenchmarkBase(EvoGymBase):
     VOXEL_SIZE = 0.1
 
     def __init__(self, world):
-
+        # print('voxel_size', self.VOXEL_SIZE)
         EvoGymBase.__init__(self, world)
         self.default_viewer.track_objects('robot')
 
@@ -397,6 +436,12 @@ class BenchmarkBase(EvoGymBase):
 
     def get_relative_pos_obs(self, object_name):
         return super().get_relative_pos_obs(object_name)*self.VOXEL_SIZE
+
+    def get_relative_pos_obs_matrix_for_robot(self, object_name):
+        return super().get_relative_pos_obs_matrix_for_robot(object_name)*self.VOXEL_SIZE
+
+    def get_relative_pos_obs_matrix_for_robot_2(self, object_name):
+        return super().get_relative_pos_obs_matrix_for_robot_2(object_name)*self.VOXEL_SIZE
 
     def get_floor_obs(self, object_name, terrain_list, sight_dist, sight_range = 5):
         return super().get_floor_obs(object_name, terrain_list, sight_dist, sight_range)*self.VOXEL_SIZE

@@ -154,6 +154,12 @@ void Sim::translate_object(double x, double y, string object_name) {
 Ref <MatrixXd> Sim::object_pos_at_time(long int sim_time, string object_name) {
 	return environment.object_pos_at_time(sim_time, object_name);
 }
+Ref <MatrixXd> Sim::object_pos_at_time_matrix_for_robot(long int sim_time, string object_name) {
+	return environment.object_pos_at_time_matrix_for_robot(sim_time, object_name);
+}
+Ref <MatrixXd> Sim::object_pos_at_time_matrix_for_robot_2(long int sim_time, string object_name) {
+	return environment.object_pos_at_time_matrix_for_robot_2(sim_time, object_name);
+}
 Ref <MatrixXd> Sim::object_vel_at_time(long int sim_time, string object_name) {
 	return environment.object_vel_at_time(sim_time, object_name);
 }

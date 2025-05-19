@@ -1,6 +1,9 @@
 import multiprocessing
 import time
 import traceback
+#import torch.multiprocessing as multiprocessing
+
+multiprocessing.set_start_method('spawn', force=True)
 
 def job_wrapper(func, args, data_container):
         try:

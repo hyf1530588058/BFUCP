@@ -1,7 +1,7 @@
 import math
 from os import name
 from evogym import is_connected, has_actuator, get_full_connectivity, draw, get_uniform
-
+import numpy as np
 class Structure():
 
     def __init__(self, body, connections, label):
@@ -15,6 +15,7 @@ class Structure():
         self.prev_gen_label = 0
 
         self.label = label
+        self.init_pt_path = None
 
     def compute_fitness(self):
 
@@ -62,6 +63,73 @@ def mutate(child, mutation_rate=0.1, num_attempts=10):
 
     # no valid robot found after num_attempts
     return None
+def mutate_new(child, mutation_rate=0.1, edge_mutation_rate=0.2, num_attempts=10):
+    # 创建一个新的概率分布，只包含从0到2的整数值
+    pd = get_uniform(3)  # 只有3个选项，对应0, 1, 2
+    pd[0] = 0.6
+    # 尝试直到找到有效的机器人
+    for n in range(num_attempts):
+        # 每个细胞都有一定的突变几率
+        for i in range(child.shape[0]):
+            for j in range(child.shape[1]):
+                # 检查当前位置是否在最外围一圈
+                if i == 0 or i == child.shape[0]-1 or j == 0 or j == child.shape[1]-1:
+                    # 如果在最外围一圈，使用更高的突变率
+                    current_mutation_rate = edge_mutation_rate
+                else:
+                    current_mutation_rate = mutation_rate
+                
+                mutation = [current_mutation_rate, 1-current_mutation_rate]
+                # 使用draw函数来判断是否发生变异
+                if draw(mutation) == 0: # mutation
+                    # 如果元素值为3或4，则可以突变为0到2
+                    if child[i][j] in [3, 4]:
+                        child[i][j] = draw(pd)
+                    # 如果元素值为1或2，有概率变为0，也可能保持不变
+                    elif child[i][j] in [1, 2]:
+                        # 这里我们通过增加一个判断来决定是否真的进行突变
+                        if draw([0.5, 0.5]) == 0:  # 假设有50%的概率进行突变
+                            child[i][j] = 0
+                    # 如果元素值为0，则保持不变
+
+        if is_connected(child) and has_actuator(child):
+            return (child, get_full_connectivity(child))
+
+def mutate_new_nozero(child, mutation_rate=0.1, edge_mutation_rate=0.15, num_attempts=10):
+    # 创建一个新的概率分布，只包含从0到2的整数值
+    pd = get_uniform(3)  # 只有3个选项，对应0, 1, 2
+    pd[0] = 0.4
+    count = 0
+    # 尝试直到找到有效的机器人
+    for n in range(num_attempts):
+        # 每个细胞都有一定的突变几率
+        for i in range(child.shape[0]):
+            if count >= 2: # 5
+                break
+            for j in range(child.shape[1]):
+                # 检查当前位置是否在最外围一圈
+                if i == 0 or i == child.shape[0]-1 or j == 0 or j == child.shape[1]-1:
+                    # 如果在最外围一圈，使用更高的突变率
+                    current_mutation_rate = edge_mutation_rate
+                else:
+                    current_mutation_rate = mutation_rate
+                
+                mutation = [current_mutation_rate, 1-current_mutation_rate]
+                if draw(mutation) == 0: # mutation
+                    # 如果元素值为3或4，则可以突变为0到2
+                    if child[i][j] in [3, 4]:
+                        child[i][j] = draw(pd)
+                        count += 1
+                    # 如果元素值为1或2，有概率变为0，也可能保持不变
+                    elif child[i][j] in [1, 2]:
+                        if draw([0.3, 0.7]) == 0:  
+                            child[i][j] = 0
+                            count += 1
+                    # 如果元素值为0，则保持不变
+                if count >= 2:
+                    break
+        if is_connected(child) and has_actuator(child):
+            return (child, get_full_connectivity(child))
 
 def get_percent_survival(gen, max_gen):
     low = 0.0

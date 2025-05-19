@@ -104,6 +104,7 @@ void ObjectCreator::init_grid(Vector2d grid_size) {
 	world_grid_width = grid_size[0];
 	world_grid_height = grid_size[1];
 	
+
 	for (int i = 0; i < world_grid_width * world_grid_height; i++) {
 		world_grid.push_back(0);
 	}
@@ -191,6 +192,14 @@ bool ObjectCreator::is_valid_in_world_grid(int x, int y) {
 }
 
 bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1, Dynamic> local_grid, Matrix <double, 2, Dynamic> connections, Vector2d grid_size, Vector2d init_pos, bool is_robot) {
+
+	if(is_robot){
+		env->robot_grid_width = grid_size[0] + 1;
+		env->robot_grid_height = grid_size[1] + 1;
+
+		env->robot_grid_width_block = grid_size[0];
+		env->robot_grid_height_block = grid_size[1];
+	}
 
 	reset();
 
@@ -330,6 +339,8 @@ bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1
 			if (bot_right != NULL)
 				current->neighbors[BOT_RIGHT] = true;
 
+			vector<int> idxs;
+
 			//TOP_LEFT_POINT
 			if (top != NULL && top->point_bot_left_index != NULL)
 				current->point_top_left_index = top->point_bot_left_index;
@@ -342,8 +353,12 @@ bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1
 				current->point_top_left_index = make_point(
 					Vector2d(start_pos.x() + x*cell_size.x(), max_y - y * cell_size.y()),
 					Vector2d(0,0), mass, false);
+				if(is_robot){
+					env->idx_2_xy.push_back(make_pair(x, y));
+				}
 				//current->point_top_left_index = env->createPoint(Vector2d_old(start_pos.x() + x * cell_size.x(), max_y - y * cell_size.y()), mass);
 			}
+			idxs.push_back(current->point_top_left_index);
 
 			//TOP_RIGHT_POINT
 			if (top != NULL && top->point_bot_right_index != NULL)
@@ -357,8 +372,12 @@ bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1
 				current->point_top_right_index = make_point(
 					Vector2d(start_pos.x() + (x + 1)*cell_size.x(), max_y - y*cell_size.y()),
 					Vector2d(0, 0), mass, false);
+				if(is_robot){
+					env->idx_2_xy.push_back(make_pair(x + 1, y));
+				}
 				//current->point_top_right_index = env->createPoint(Vector2d_old(start_pos.x() + (x + 1)*cell_size.x(), max_y - y * cell_size.y()), mass);
 			}
+			idxs.push_back(current->point_top_right_index);
 
 			//BOT_LEFT_POINT
 			if (bot != NULL && bot->point_top_left_index != NULL)
@@ -372,9 +391,13 @@ bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1
 				current->point_bot_left_index = make_point(
 					Vector2d(start_pos.x() + x*cell_size.x(), max_y - (y + 1)*cell_size.y()),
 					Vector2d(0, 0), mass, false);
+				if(is_robot){
+					env->idx_2_xy.push_back(make_pair(x, y + 1));
+				}
 				//current->point_bot_left_index = env->createPoint(Vector2d_old(start_pos.x() + x * cell_size.x(), max_y - (y + 1)*cell_size.y()), mass);
 				
 			}
+			idxs.push_back(current->point_bot_left_index);
 
 			//BOT_RIGHT_POINT
 			if (bot != NULL && bot->point_top_right_index != NULL)
@@ -388,10 +411,17 @@ bool ObjectCreator::read_object_from_array(string object_name, Matrix <double, 1
 				current->point_bot_right_index = make_point(
 					Vector2d(start_pos.x() + (x + 1)*cell_size.x(), max_y - (y + 1)*cell_size.y()),
 					Vector2d(0, 0), mass, false);
+				if(is_robot){
+					env->idx_2_xy.push_back(make_pair(x + 1, y + 1));
+				}
 				//current->point_bot_right_index = env->createPoint(Vector2d_old(start_pos.x() + (x + 1)*cell_size.x(), max_y - (y + 1)*cell_size.y()), mass);
 
 			}
+			idxs.push_back(current->point_bot_right_index);
 
+			if(is_robot){
+				env->idx_2_xy_block[make_pair(x, y)] = idxs;
+			}
 			//SET SHARED EDGES
 
 			//TOP

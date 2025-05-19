@@ -38,6 +38,8 @@ PYBIND11_MODULE(simulator_cpp, m) {
 		.def("pos_at_time", &Sim::pos_at_time, py::return_value_policy::reference_internal)
 		.def("vel_at_time", &Sim::vel_at_time, py::return_value_policy::reference_internal)
 		.def("object_pos_at_time", &Sim::object_pos_at_time, py::return_value_policy::reference_internal)
+		.def("object_pos_at_time_matrix_for_robot", &Sim::object_pos_at_time_matrix_for_robot, py::return_value_policy::reference_internal)
+		.def("object_pos_at_time_matrix_for_robot_2", &Sim::object_pos_at_time_matrix_for_robot_2, py::return_value_policy::reference_internal)
 		.def("object_vel_at_time", &Sim::object_vel_at_time, py::return_value_policy::reference_internal)
 		.def("object_orientation_at_time", &Sim::object_orientation_at_time)
 		.def("translate_object", &Sim::translate_object)

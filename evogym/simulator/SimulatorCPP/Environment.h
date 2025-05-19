@@ -96,12 +96,31 @@ public:
 	Ref <MatrixXd> get_vel_at_time(long int sim_time);
 
 	Ref <MatrixXd> object_pos_at_time(long int sim_time, string object_name);
+	Ref <MatrixXd> object_pos_at_time_matrix_for_robot(long int sim_time, string object_name);
+	Ref <MatrixXd> object_pos_at_time_matrix_for_robot_2(long int sim_time, string object_name);
 	Ref <MatrixXd> object_vel_at_time(long int sim_time, string object_name);
 	double object_orientation_at_time(long int sim_time, string object_name);
 	void translate_object(double x, double y, string object_name);
 
 	void print_poses();
 
+
+	// 这个变量存的是下标到网格二维坐标的映射，用来解析obs_env的位置信息
+	vector<pair<int, int>> idx_2_xy;
+
+	// 点阵大小
+	int robot_grid_width;
+	int robot_grid_height;
+
+
+	//每一个方块，对应4个角上的点，的xy
+	map<pair<int, int>, vector<int>> idx_2_xy_block;
+
+	// 块阵大小
+	int robot_grid_width_block;
+	int robot_grid_height_block;
+
+	Matrix <double, 2, Dynamic> ret;
 
 	//vector<Vector2d_old>* getPointsPos();
 	//vector<bool>* getPointsFixed();

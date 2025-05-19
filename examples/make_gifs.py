@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 import gym
+import json
 from PIL import Image
 import imageio
 from pygifsicle import optimize
@@ -16,6 +17,8 @@ from utils.algo_utils import *
 from ppo.envs import make_vec_envs
 from ppo.utils import get_vec_normalize
 import utils.mp_group as mp
+
+import IPython
 
 def get_generations(load_dir, exp_name):
     gen_list = os.listdir(os.path.join(load_dir, exp_name))
@@ -210,6 +213,7 @@ class Job():
             exp_gens = self.generations if self.generations is not None else get_generations(self.load_dir, exp_name)
             for gen in exp_gens:
                 for idx, reward in get_exp_gen_data(exp_name, load_dir, gen):
+                    # IPython.embed()
                     robots.append(Robot(
                         body_path = os.path.join(load_dir, exp_name, f"generation_{gen}", "structure", f"{idx}.npz"),
                         ctrl_path = os.path.join(load_dir, exp_name, f"generation_{gen}", "controller", f"robot_{idx}_controller.pt"),
@@ -225,12 +229,19 @@ class Job():
         
         # make gifs
         for i, robot in zip(ranks, robots):
+            if robot.reward in reward_set:
+                print('dump')
+                continue 
+            reward_set.add(robot.reward)
             save_robot_gif(
                 os.path.join(save_dir, f'{i}_{robot}'),
                 robot.env_name,
                 robot.body_path,
                 robot.ctrl_path
             )
+
+        # IPython.embed()
+        json.dump(list(reward_set), open(os.path.join(os.path.split(save_dir)[0], 'dump.json'), 'w'))
 
         # multiprocessing is currently broken
         
@@ -254,11 +265,20 @@ if __name__ == '__main__':
     my_job = Job(
         name = 'test_ga',
         experiment_names= ['test_ga'],
-        env_names = ['Walker-v0'],
-        ranks = [i for i in range(3)],
+        env_names = ['Carrier-v0'],
+        # env_names = ['Balancer-v0'],
+        ranks = [i for i in range(6)],
         load_dir = exp_root,
         organize_by_experiment=False,
         organize_by_generation=True,
     )
     
+
+    reward_set = set()
+    set_file = os.path.join(save_dir, my_job.name, 'dump.json')
+    if os.path.exists(set_file):
+        reward_set = set(json.load(open(set_file)))
+    # IPython.embed()
+
+
     my_job.generate(load_dir=exp_root, save_dir=save_dir)

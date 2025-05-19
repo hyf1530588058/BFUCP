@@ -16,6 +16,8 @@ from evogym import sample_robot, hashable
 import utils.mp_group as mp
 from utils.algo_utils import get_percent_survival_evals, mutate, TerminationCondition, Structure
 
+import IPython
+
 def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_iters, num_cores):
     print()
 
@@ -25,6 +27,7 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
 
     ### DEFINE TERMINATION CONDITION ###    
     tc = TerminationCondition(train_iters)
+    termination_condition  = TerminationCondition(train_iters)
 
     is_continuing = False    
     try:
@@ -33,6 +36,7 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
         print(f'THIS EXPERIMENT ({experiment_name}) ALREADY EXISTS')
         print("Override? (y/n/c): ", end="")
         ans = input()
+        # ans = 'y'
         if ans.lower() == "y":
             shutil.rmtree(home_path)
             print()
@@ -147,6 +151,7 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
 
         #better parallel
         group = mp.Group()
+        idd = 0
         for structure in structures:
 
             if structure.is_survivor:
@@ -161,14 +166,15 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
                 except:
                     print(f'Error coppying controller for {save_path_controller_part}.\n')
             else:        
-                ppo_args = ((structure.body, structure.connections), tc, (save_path_controller, structure.label))
+                ppo_args = ((structure.body, structure.connections), tc, (save_path_controller, structure.label), structure.init_pt_path, idd)
+                idd += 1
                 group.add_job(run_ppo, ppo_args, callback=structure.set_reward)
 
         group.run_jobs(num_cores)
 
         #not parallel
-        #for structure in structures:
-        #    ppo.run_algo(structure=(structure.body, structure.connections), termination_condition=termination_condition, saving_convention=(save_path_controller, structure.label))
+        # for structure in structures:
+        #    run_ppo(structure=(structure.body, structure.connections), termination_condition=termination_condition, saving_convention=(save_path_controller, structure.label))
 
         ### COMPUTE FITNESS, SORT, AND SAVE ###
         for structure in structures:
@@ -197,6 +203,9 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
         ### CROSSOVER AND MUTATION ###
         # save the survivors
         survivors = structures[:num_survivors]
+        fits = [e.fitness for e in survivors]
+
+        open(os.path.join(root_dir, "saved_data", experiment_name, "fits.txt"), 'a').write('\t'.join([str(e) for e in [generation] + fits]) + '\n')
 
         #store survivior information to prevent retraining robots
         for i in range(num_survivors):
@@ -208,13 +217,21 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
         num_children = 0
         while num_children < (pop_size - num_survivors) and num_evaluations < max_evaluations:
 
-            parent_index = random.sample(range(num_survivors), 1)
+            # parent_index = random.sample(range(num_survivors), 1)
+
+            # parent_index = [0]
+
+            parent_index = random.choices(range(num_survivors), fits)
+            # IPython.embed()
+
             child = mutate(survivors[parent_index[0]].body.copy(), mutation_rate = 0.1, num_attempts=50)
 
             if child != None and hashable(child[0]) not in population_structure_hashes:
                 
                 # overwrite structures array w new child
                 structures[num_survivors + num_children] = Structure(*child, num_survivors + num_children)
+                structures[num_survivors + num_children].init_pt_path = os.path.join(root_dir, "saved_data", experiment_name, "generation_" + str(generation), "controller",
+                    "robot_" + str(survivors[parent_index[0]].prev_gen_label) + "_controller" + ".pt")
                 population_structure_hashes[hashable(child[0])] = True
                 num_children += 1
                 num_evaluations += 1

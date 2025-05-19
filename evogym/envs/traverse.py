@@ -34,8 +34,9 @@ class StairsBase(BenchmarkBase):
         obs = np.concatenate((
             self.get_vel_com_obs("robot"),
             np.array([robot_ort]),
-            self.get_relative_pos_obs("robot"),
+            # self.get_relative_pos_obs("robot"),
             self.get_floor_obs("robot", ["ground"], self.sight_dist),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
             ))
 
         return obs
@@ -54,7 +55,8 @@ class StepsUp(StairsBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        # num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
         self.sight_dist = 5
 
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
@@ -76,8 +78,9 @@ class StepsUp(StairsBase):
         obs = np.concatenate((
             self.get_vel_com_obs("robot"),
             np.array([robot_ort_final]),
-            self.get_relative_pos_obs("robot"),
+            # self.get_relative_pos_obs("robot"),
             self.get_floor_obs("robot", ["ground"], self.sight_dist),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
             ))
        
         # compute reward

@@ -24,7 +24,8 @@ class Balance(BenchmarkBase):
 
         # set action space and observation space
         num_actuators = self.get_actuator_indices('robot').size
-        num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        # num_robot_points = self.object_pos_at_time(self.get_time(), "robot").size
+        num_robot_points = self.get_relative_pos_obs_matrix_for_robot_2("robot").size
 
         self.action_space = spaces.Box(low= 0.6, high=1.6, shape=(num_actuators,), dtype=np.float)
         self.observation_space = spaces.Box(low=-100.0, high=100.0, shape=(1 + num_robot_points,), dtype=np.float)
@@ -60,7 +61,8 @@ class Balance(BenchmarkBase):
         # observation
         obs = np.concatenate((
             np.array([ort]),
-            self.get_relative_pos_obs("robot"),
+            # self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
             ))
 
         # compute reward
@@ -81,7 +83,8 @@ class Balance(BenchmarkBase):
         # observation
         obs = np.concatenate((
             self.get_ort_obs("robot"),
-            self.get_relative_pos_obs("robot"),
+            # self.get_relative_pos_obs("robot"),
+            self.get_relative_pos_obs_matrix_for_robot_2("robot"),
             ))
 
         return obs

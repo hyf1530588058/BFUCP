@@ -97,7 +97,9 @@ def inverted_ga(structures, actor_critic, args, max_evaluations, pop_size, exper
         f.write(out)
         f.close()
 
-        survivors.append(structures_k[i][0])
+        survivors.append(structures_k[i][0]) #RUCP,择劣选取
+        # survivors.append(structures_k[i][-1]) #OU,择优选取
+        # survivors.append(random.choice(structures_k[i])) #RU,随机选取
         ### CHECK EARLY TERMINATION ###
         if num_evaluations == max_evaluations:
             return survivors, num_evaluations, population_structure_hashes, generation

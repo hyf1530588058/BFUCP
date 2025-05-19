@@ -13,19 +13,20 @@ sys.path.insert(0, root_dir)
 sys.path.insert(1, os.path.join(external_dir, 'pytorch_a2c_ppo_acktr_gail'))
 sys.path.insert(2, curr_dir)
 
-from ppo.mygaPPOrun import run_gappo
+from ppo.NSLCrun import run_nslcppo
 from evogym import sample_robot, hashable
 import utils.mp_group as mp
 from vec2morph import morph_to_vec
 from ppo.metamorphmodel import ImitationNet
-from utils.algo_utils_new import get_percent_survival_evals, mutate, TerminationCondition, Structure as BaseStructure
+from utils.algo_utils import get_percent_survival_evals, mutate, TerminationCondition, Structure as BaseStructure
 import torch
-from ppo.evaluate_distill import evaluate as evaluate_distill
+from ppo.evaluate import evaluate
 from sklearn.cluster import KMeans
 import collections
 from ppo import utils
 from ppo.envs import make_vec_envs
 from ppo.arguments import get_args
+from ppo.myPPOrun2 import run_ppo
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 def get_actuator_indices(structure_matrix):
@@ -51,7 +52,7 @@ class ExtendedStructure(BaseStructure):
     def __str__(self):
         return f'\n\nStructure:\n{self.body}\nPretrain_F: {self.pretrain_fitness}\tID: {self.label}'
 
-def evaluate_structure_with_pretrain(args, structure, controller, env_name, num_evals=1, num_processes=1):
+def evaluate_structure_with_pretrain(experiment_name,args, structure, controller, env_name, num_evals=1, num_processes=1):
 
     # 加载训练好的控制器
     actor_critic = controller
@@ -79,7 +80,9 @@ def evaluate_structure_with_pretrain(args, structure, controller, env_name, num_
     utils.cleanup_log_dir(eval_log_dir)
     obs_rms = utils.get_vec_normalize(envs).obs_rms
     # 调用评估函数
-    avg_reward = evaluate_distill(
+    saving_convention = os.path.join(root_dir, "saved_data", experiment_name, "BFUCP")
+    _ = run_ppo(structure, 250, saving_convention, actor_critic,args)  
+    avg_reward = evaluate(
         num_evals=num_evals,
         actor_critic=actor_critic,
         obs_rms=obs_rms,
@@ -233,7 +236,8 @@ def run_se(experiment_name, load_name, structure_shape, pop_size, max_evaluation
         group = mp.Group()   
         #if generation==0 or generation==start_gen: #  
         for structure in structures:
-            structure.pretrain_fitness = evaluate_structure_with_pretrain(args, (structure.body, structure.connections), imitation_model, args.env_name, args.num_evals, args.num_processes)
+            structure.pretrain_fitness = evaluate_structure_with_pretrain(experiment_name,args, (structure.body, structure.connections), imitation_model, args.env_name, args.num_evals, args.num_processes)
+            imitation_model.load_state_dict(torch.load(pretrain_model_path))
             if structure.is_survivor:
                 save_path_controller_part = os.path.join(root_dir, "saved_data", experiment_name, "generation_" + str(generation), "controller",
                     "robot_" + str(structure.label) + "_controller" + ".pt")
@@ -247,7 +251,7 @@ def run_se(experiment_name, load_name, structure_shape, pop_size, max_evaluation
                     print(f'Error coppying controller for {save_path_controller_part}.\n')
             else:        
                 ppo_args = ((structure.body, structure.connections), tc, (save_path_controller, structure.label))
-                group.add_job(run_gappo, ppo_args, callback=structure.set_reward)
+                group.add_job(run_nslcppo, ppo_args, callback=structure.set_reward)
 
         group.run_jobs(num_cores)
      
@@ -261,7 +265,7 @@ def run_se(experiment_name, load_name, structure_shape, pop_size, max_evaluation
             structure.compute_fitness()
         
         structures = sorted(structures, key=lambda structure: structure.pretrain_fitness, reverse=True)
-        if generation % 3 == 0:
+        if generation % 5 == 0:
             structures = sorted(structures, key=lambda structure: structure.fitness, reverse=True)
 
         #SAVE RANKING TO FILE

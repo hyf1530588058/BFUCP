@@ -17,7 +17,8 @@ from ppo.metamorphmodel import num_params
 from evogym import sample_robot, hashable, is_connected, has_actuator, get_full_connectivity
 import utils.mp_group as mp
 from utils.algo_utils import get_percent_survival_evals, mutate, TerminationCondition, Structure
-from ppo.metaPPOmodel import Policy
+from ppo.myPPOmodel2 import Policy       
+# from ppo.RARLmodel_MLP import Policy      #RSAC
 from ppo.arguments import get_args
 from ppo.envs import make_vec_envs
 from .inverted3 import inverted_ga

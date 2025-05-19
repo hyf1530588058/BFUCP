@@ -18,7 +18,7 @@ from .parallel import ParallelEvaluator
 from .population import Population
 
 from utils.algo_utils import TerminationCondition
-from ppo import run_ppo
+from ppo.NSLCrun import run_nslcppo
 from evogym import is_connected, has_actuator, get_full_connectivity, hashable
 import evogym.envs
 
@@ -48,7 +48,7 @@ def eval_genome_fitness(genome, config, genome_id, generation):
     save_path_structure = os.path.join(save_path_generation, 'structure', f'{genome_id}')
     save_path_controller = os.path.join(save_path_generation, 'controller')
     np.savez(save_path_structure, robot, connectivity)
-    fitness = run_ppo(
+    fitness = run_nslcppo(
         structure=(robot, connectivity),
         termination_condition=TerminationCondition(config.extra_info['train_iters']),
         saving_convention=(save_path_controller, genome_id),

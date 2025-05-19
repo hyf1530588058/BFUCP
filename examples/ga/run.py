@@ -11,13 +11,13 @@ external_dir = os.path.join(root_dir, 'externals')
 sys.path.insert(0, root_dir)
 sys.path.insert(1, os.path.join(external_dir, 'pytorch_a2c_ppo_acktr_gail'))
 
-from ppo import run_ppo
+from ppo.NSLCrun import run_nslcppo
 from evogym import sample_robot, hashable
 import utils.mp_group as mp
 from utils.algo_utils import get_percent_survival_evals, mutate, TerminationCondition, Structure
-
+import itertools
 import IPython
-
+import glob
 def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_iters, num_cores):
     print()
 
@@ -90,10 +90,11 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
     population_structure_hashes = {}
     num_evaluations = 0
     generation = 0
-    
+    # walker_dir = os.path.join(root_dir, "robot_universal/walker_structure")
+    # npz_files = glob.glob(os.path.join(walker_dir, "*.npz"))
     #generate a population
     if not is_continuing: 
-        for i in range (pop_size):
+        # for i in range (pop_size):
             
             temp_structure = sample_robot(structure_shape)
             while (hashable(temp_structure[0]) in population_structure_hashes):
@@ -102,6 +103,17 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
             structures.append(Structure(*temp_structure, i))
             population_structure_hashes[hashable(temp_structure[0])] = True
             num_evaluations += 1
+
+        # for file_path in npz_files:
+        #     np_data = np.load(file_path)
+        #     structure_data = []
+        #     for key, value in itertools.islice(np_data.items(), 2):  #将读取的原数据添加到新*/的预训练列表中#
+        #         structure_data.append(value)
+        #     structure_data = list(structure_data)
+        #     #structure_data[0] = np.array()
+        #     file_name = os.path.basename(file_path) 
+        #     label = int(os.path.splitext(file_name)[0])            
+        #     structures.append(Structure(*tuple(structure_data), label))  # *号是将列表拆开成两个独立参数：体素数组和连接数组然后传入Structure类当中，label属性是机器人的编号#
 
     #read status from file
     else:
@@ -166,9 +178,8 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
                 except:
                     print(f'Error coppying controller for {save_path_controller_part}.\n')
             else:        
-                ppo_args = ((structure.body, structure.connections), tc, (save_path_controller, structure.label), structure.init_pt_path, idd)
-                idd += 1
-                group.add_job(run_ppo, ppo_args, callback=structure.set_reward)
+                ppo_args = ((structure.body, structure.connections), tc, (save_path_controller, structure.label))
+                group.add_job(run_nslcppo, ppo_args, callback=structure.set_reward)
 
         group.run_jobs(num_cores)
 
@@ -193,8 +204,95 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
         f.close()
 
          ### CHECK EARLY TERMINATION ###
-        if num_evaluations == max_evaluations:
+        if num_evaluations >= max_evaluations:
             print(f'Trained exactly {num_evaluations} robots')
+            # 新增：保存最终结果
+            final_result_path = os.path.join(root_dir, "saved_data", experiment_name, "final_results")
+            os.makedirs(final_result_path, exist_ok=True)
+            ALL_structure_hashes = {}
+            # 使用population_structure_hashes来获取所有独特形态
+            unique_structures = []
+            for g in range(generation + 1):
+                gen_path = os.path.join(root_dir, "saved_data", experiment_name, "generation_" + str(g))
+                if not os.path.exists(gen_path):
+                    continue
+                    
+                # 读取每代的结构
+                structure_dir = os.path.join(gen_path, "structure")
+                for structure_file in os.listdir(structure_dir):
+                    if structure_file.endswith('.npz'):
+                        structure_path = os.path.join(structure_dir, structure_file)
+                        np_data = np.load(structure_path)
+                        structure_data = tuple([np_data[key] for key in np_data])
+                        structure_hash = hashable(structure_data[0])
+                        
+                        # 如果哈希值在population_structure_hashes中，则记录
+                        if structure_hash not in ALL_structure_hashes:
+                            # 获取对应的fitness
+                            output_file = os.path.join(gen_path, "output.txt")
+                            with open(output_file, 'r') as f:
+                                for line in f:
+                                    label, fitness = line.strip().split('\t\t')
+                                    if label == structure_file.split('.')[0]:
+                                        unique_structures.append((g, int(label), float(fitness), structure_data))
+                                        ALL_structure_hashes[structure_hash] = True
+                                        break
+            
+            # 保存所有独特形态
+            for g, label, fitness, structure_data in unique_structures:
+                new_name = f"{g}_{label}.npz"
+                np.savez(os.path.join(final_result_path, new_name), *structure_data)
+            sorted_by_generation = sorted(unique_structures, key=lambda x: (x[0], x[1]))
+            generation_sequence_path = os.path.join(final_result_path, "generation_sequence.txt")
+            
+            with open(generation_sequence_path, 'w') as f:
+                f.write("Generation\tLabel\tFitness\n")
+                for gen, label, fitness, _ in sorted_by_generation:
+                    f.write(f"{gen}\t{label}\t{fitness}\n")
+            
+            print(f"Generation sequence saved to {generation_sequence_path}")
+            
+            # 计算并保存最佳和平均fitness
+            all_fitness = [f for _, _, f, _ in unique_structures]
+            best_fitness = max(all_fitness)
+            avg_fitness = sum(all_fitness) / len(all_fitness)
+            
+            # 新增：按生成数量分段统计
+            segment_sizes = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250,275,300,325,350,375,400,425,450,475,500,525,550,575,600,625,650,675,700,725,750]  # 你可以根据需要调整这些分段大小
+            segment_stats = []
+            
+            # 按生成顺序排序（通过代数和label）
+            sorted_by_generation = sorted(unique_structures, key=lambda x: (x[0], x[1]))
+            
+            # 计算每个分段的统计信息
+            for size in segment_sizes:
+                if len(sorted_by_generation) >= size:
+                    # 获取当前分段
+                    segment = sorted_by_generation[:size]
+                    segment_fitness = [s[2] for s in segment]
+                    segment_best = max(segment_fitness)
+                    segment_avg = sum(segment_fitness) / len(segment_fitness)
+                    
+                    # 记录统计信息
+                    start_gen = segment[0][0]
+                    end_gen = segment[-1][0]
+                    segment_stats.append((size, start_gen, end_gen, segment_best, segment_avg))
+            
+            # 保存所有统计信息
+            with open(os.path.join(final_result_path, "summary.txt"), 'w') as f:
+                f.write(f"Best Fitness: {best_fitness}\n")
+                f.write(f"Average Fitness: {avg_fitness}\n")
+                f.write(f"Total Unique Structures: {len(unique_structures)}\n")
+                
+                # 写入分段统计
+                f.write("\nGeneration Segment Statistics by Quantity:\n")
+                for size, start_gen, end_gen, seg_best, seg_avg in segment_stats:
+                    f.write(f"First {size} structures (Generations {start_gen}-{end_gen}):\n")
+                    f.write(f"  Best Fitness: {seg_best}\n")
+                    f.write(f"  Average Fitness: {seg_avg}\n")
+            
+            print(f"Final results saved to {final_result_path}")
+            print(f"Total unique structures generated: {len(unique_structures)}")
             return
 
         print(f'FINISHED GENERATION {generation} - SEE TOP {round(percent_survival*100)} percent of DESIGNS:\n')
@@ -239,3 +337,4 @@ def run_ga(experiment_name, structure_shape, pop_size, max_evaluations, train_it
         structures = structures[:num_children+num_survivors]
 
         generation += 1
+

@@ -10,6 +10,3 @@
 [submodule "evogym/simulator/externals/glew"]
 	path = evogym/simulator/externals/glew
 	url = https://github.com/Perlmint/glew-cmake
-[submodule "examples/externals/PyTorch-NEAT"]
-	path = examples/externals/PyTorch-NEAT
-	url = https://github.com/uber-research/PyTorch-NEAT

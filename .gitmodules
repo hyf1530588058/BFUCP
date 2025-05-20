@@ -1,6 +1,3 @@
-[submodule "examples/externals/pytorch_a2c_ppo_acktr_gail"]
-	path = examples/externals/pytorch_a2c_ppo_acktr_gail
-	url = https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail.git
 [submodule "evogym/simulator/externals/pybind11"]
 	path = evogym/simulator/externals/pybind11
 	url = https://github.com/pybind/pybind11
